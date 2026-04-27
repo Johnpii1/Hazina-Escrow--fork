@@ -48,6 +48,7 @@ export default function SellPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
   const [jsonError, setJsonError] = useState("");
 
   const set =
@@ -109,7 +110,8 @@ export default function SellPage() {
     form.dataText.trim() &&
     !jsonError;
 
-  const handleSubmit = async () => {
+  const handleSubmitConfirmed = async () => {
+    setShowConfirm(false);
     if (!isValid || !validateJson(form.dataText)) return;
     setSubmitting(true);
     setError("");
@@ -399,7 +401,7 @@ export default function SellPage() {
                 )}
 
                 <button
-                  onClick={handleSubmit}
+                  onClick={() => setShowConfirm(true)}
                   disabled={!isValid || submitting}
                   className={clsx(
                     "btn-gold w-full flex items-center justify-center gap-2 py-4 text-base",
@@ -418,6 +420,55 @@ export default function SellPage() {
                     </>
                   )}
                 </button>
+
+                {/* Confirmation dialog */}
+                {showConfirm && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div
+                      className="absolute inset-0 bg-void/80 backdrop-blur-sm"
+                      onClick={() => setShowConfirm(false)}
+                      aria-hidden="true"
+                    />
+                    <div
+                      role="dialog"
+                      aria-modal="true"
+                      aria-labelledby="confirm-title"
+                      className="relative w-full max-w-sm glass-card-gold p-6 rounded-2xl"
+                    >
+                      <h3
+                        id="confirm-title"
+                        className="font-display font-bold text-lg text-foreground mb-2"
+                      >
+                        Publish dataset?
+                      </h3>
+                      <p className="text-sm text-foreground-muted font-body mb-6">
+                        You are about to list{" "}
+                        <span className="text-foreground font-medium">
+                          {form.name}
+                        </span>{" "}
+                        at{" "}
+                        <span className="text-gold font-semibold">
+                          ${formatUSDC(Number(form.pricePerQuery), locale)} USDC
+                        </span>{" "}
+                        per query. This action cannot be undone.
+                      </p>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => setShowConfirm(false)}
+                          className="btn-ghost flex-1 py-2.5 text-sm"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleSubmitConfirmed}
+                          className="btn-gold flex-1 py-2.5 text-sm"
+                        >
+                          Publish
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               /* Preview tab */
