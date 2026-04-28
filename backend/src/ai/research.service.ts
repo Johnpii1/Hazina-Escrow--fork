@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { getAnthropicResearchModel } from './anthropic.config';
 
 export interface ResearchInput {
   userQuery: string;
@@ -104,7 +105,7 @@ Respond ONLY with valid JSON in this exact shape (no markdown fences):
 
   // First attempt
   const response = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: getAnthropicResearchModel(),
     max_tokens: 2048,
     messages: [{ role: 'user', content: prompt }],
   });

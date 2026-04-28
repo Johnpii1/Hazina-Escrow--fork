@@ -20,6 +20,10 @@ export interface Transaction {
   datasetId: string;
   txHash: string;
   amount: number;
+  sellerPaid: boolean;
+  sellerAmount?: number;
+  sellerTxHash?: string;
+  sellerPayoutError?: string;
   buyerQuery?: string;
   aiSummary?: string;
   timestamp: string;
