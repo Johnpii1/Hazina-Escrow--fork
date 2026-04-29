@@ -14,6 +14,8 @@ import { useEffect, useId, useState } from "react";
 import { isConnected, getPublicKey } from "@stellar/freighter-api";
 import clsx from "clsx";
 import { LocaleSwitcher, useI18n } from "../../i18n";
+import { getPublicKey, isConnected } from "@stellar/freighter-api"; // Import Freighter API
+import { truncateAddress } from "../../lib/utils"; // Import utility for address truncation
 
 const NAV_LINKS = [
   { to: "/marketplace", key: "nav.marketplace", icon: ShoppingCart, dataTour: "marketplace-link" },
@@ -85,6 +87,70 @@ export default function Navbar() {
     };
   }, [mobileOpen]);
 
+  // Load wallet from localStorage on mount and verify with Freighter
+  useEffect(() => {
+    const storedWallet = localStorage.getItem("hazina-wallet");
+    if (storedWallet) {
+      // Check if Freighter is available and authorized
+      isConnected().then(async (connected) => {
+        if (connected) {
+          try {
+            const currentFreighterKey = await getPublicKey();
+            if (currentFreighterKey === storedWallet) {
+              setConnectedWallet(currentFreighterKey);
+            } else {
+              // Stored key doesn't match current Freighter connection, clear it
+              localStorage.removeItem("hazina-wallet");
+            }
+          } catch (error) {
+            // User might have disconnected from Freighter directly, or error occurred
+            console.warn("Freighter getPublicKey failed during re-check:", error);
+            localStorage.removeItem("hazina-wallet");
+          }
+        } else {
+          // Freighter is not connected or not authorized for this site
+          localStorage.removeItem("hazina-wallet");
+        }
+      }).catch((error) => {
+        // Error checking Freighter connection (e.g., Freighter not installed or API unavailable)
+        console.warn("Freighter isConnected check failed:", error);
+        localStorage.removeItem("hazina-wallet");
+      });
+    }
+  }, []);
+
+  // Persist wallet to localStorage when it changes
+  useEffect(() => {
+    if (connectedWallet) {
+      localStorage.setItem("hazina-wallet", connectedWallet);
+    } else {
+      localStorage.removeItem("hazina-wallet");
+    }
+  }, [connectedWallet]);
+
+  const connectWallet = useCallback(async () => {
+    setIsConnecting(true);
+    try {
+      const publicKey = await getPublicKey();
+      setConnectedWallet(publicKey);
+      setShowDisconnect(false); // Hide disconnect option after connecting
+    } catch (error) {
+      console.error("Failed to connect wallet:", error);
+      // Optionally, show a user-friendly error message
+    } finally {
+      setIsConnecting(false);
+    }
+  }, []);
+
+  const disconnectWallet = useCallback(() => {
+    setConnectedWallet(null);
+    setShowDisconnect(false); // Hide disconnect option after disconnecting
+  }, []);
+
+  const toggleDisconnectOptions = useCallback(() => {
+    setShowDisconnect((prev) => !prev);
+  }, []);
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
       <div className="mx-3 mt-3 sm:mx-4 sm:mt-4">
@@ -123,9 +189,47 @@ export default function Navbar() {
             ))}
           </div>
 
-          {/* CTA */}
+          {/* CTA and Wallet (Desktop) */}
           <div className="hidden xl:flex items-center gap-3 shrink-0">
             <LocaleSwitcher />
+
+            {connectedWallet ? (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={toggleDisconnectOptions}
+                  className="flex items-center gap-2 whitespace-nowrap px-3 py-2 rounded-xl text-sm font-medium font-body transition-all duration-200 bg-gold/15 text-gold border border-gold/25 hover:bg-gold/25"
+                  aria-expanded={showDisconnect}
+                  aria-haspopup="true"
+                >
+                  <Wallet className="w-4 h-4" aria-hidden="true" />
+                  {truncateAddress(connectedWallet)}
+                </button>
+                {showDisconnect && (
+                  <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-surface-1 ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+                    <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+                      <button
+                        onClick={disconnectWallet}
+                        className="block w-full text-left px-4 py-2 text-sm text-foreground-muted hover:bg-surface-2 hover:text-foreground"
+                        role="menuitem"
+                      >
+                        {t("nav.disconnect")}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={connectWallet}
+                disabled={isConnecting}
+                className="btn-gold text-sm px-4 py-2 whitespace-nowrap"
+              >
+                {isConnecting ? "Connecting..." : t("nav.connectWallet")}
+              </button>
+            )}
+
             <Link
               to="/marketplace"
               className="btn-gold text-sm px-4 py-2 whitespace-nowrap"
@@ -222,6 +326,33 @@ export default function Navbar() {
                 >
                   <Wallet className="w-5 h-5" aria-hidden="true" />
                   {t("common.actions.connectWallet")}
+                </button>
+              )}
+            </div>
+
+            {/* Wallet (Mobile) */}
+            <div className="rounded-2xl border border-gold/10 bg-void/25 p-3">
+              {connectedWallet ? (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2 px-4 py-3.5 text-sm font-medium font-body bg-gold/15 text-gold border border-gold/25 rounded-xl">
+                    <Wallet className="w-4 h-4 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{truncateAddress(connectedWallet)}</span>
+                  </div>
+                  <button
+                    onClick={disconnectWallet}
+                    className="block w-full text-left px-4 py-3.5 text-sm font-medium font-body transition-all duration-200 text-foreground-muted hover:text-foreground hover:bg-surface-2 border border-transparent rounded-xl"
+                  >
+                    {t("nav.disconnect")}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={connectWallet}
+                  disabled={isConnecting}
+                  className="btn-gold text-sm px-4 py-3.5 whitespace-nowrap w-full"
+                >
+                  {isConnecting ? "Connecting..." : t("nav.connectWallet")}
                 </button>
               )}
             </div>
