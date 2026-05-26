@@ -352,6 +352,7 @@ export const en = {
     demoModeNote: 'Demo mode — payments simulated on Stellar testnet',
     loading: 'Researching...',
     errorTitle: 'Agent error',
+    rateLimitError: 'Too many requests — please wait a moment before retrying.',
     result: {
       topOpportunity: 'Top Opportunity',
       reasoning: 'Reasoning',

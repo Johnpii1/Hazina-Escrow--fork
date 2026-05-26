@@ -52,7 +52,9 @@ export default function AgentPage() {
       const job = await api.agentDemo(query.trim());
       setResult(job);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("common.states.error"));
+      const msg = err instanceof Error ? err.message : t("common.states.error");
+      const isRateLimit = msg.includes('429') || /too many requests/i.test(msg);
+      setError(isRateLimit ? t("agent.rateLimitError") : msg);
     } finally {
       setLoading(false);
     }

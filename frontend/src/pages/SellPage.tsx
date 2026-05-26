@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Upload,
@@ -78,6 +78,22 @@ export default function SellPage() {
   const [error, setError] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
   const [jsonError, setJsonError] = useState("");
+  const confirmBtnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (showConfirm) {
+      confirmBtnRef.current?.focus();
+    }
+  }, [showConfirm]);
+
+  useEffect(() => {
+    if (!showConfirm) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowConfirm(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showConfirm]);
 
   // Persist form draft across page reloads
   useEffect(() => {
@@ -495,6 +511,7 @@ export default function SellPage() {
                           Cancel
                         </button>
                         <button
+                          ref={confirmBtnRef}
                           onClick={handleSubmitConfirmed}
                           className="btn-gold flex-1 py-2.5 text-sm"
                         >

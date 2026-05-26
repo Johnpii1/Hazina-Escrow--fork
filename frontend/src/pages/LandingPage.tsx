@@ -112,8 +112,12 @@ export default function LandingPage() {
   const [loaded, setLoaded] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [featuredError, setFeaturedError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  const retry = () => setRetryCount((c) => c + 1);
 
   useEffect(() => {
+    setFeaturedLoading(true);
     api
       .getStats()
       .then((data) => {
@@ -139,7 +143,7 @@ export default function LandingPage() {
       .finally(() => setFeaturedLoading(false));
     const timer = setTimeout(() => setLoaded(true), 100);
     return () => clearTimeout(timer);
-  }, []);
+  }, [retryCount]);
 
   // Generate particles positions once
   const particles = Array.from({ length: 30 }, (_, i) => ({
@@ -227,9 +231,17 @@ export default function LandingPage() {
 
           {/* Stats error notice */}
           {statsError && (
-            <p className="text-xs text-red-400 font-body text-center mb-2 opacity-75">
-              {statsError}
-            </p>
+            <div className="flex flex-col items-center gap-2 mb-2">
+              <p className="text-xs text-red-400 font-body text-center opacity-75">
+                {statsError}
+              </p>
+              <button
+                onClick={retry}
+                className="text-xs text-gold hover:underline font-body"
+              >
+                Retry
+              </button>
+            </div>
           )}
 
           {/* Stats bar */}
@@ -402,8 +414,14 @@ export default function LandingPage() {
       {/* Featured datasets error notice */}
       {featuredError && (
         <section className="py-6">
-          <div className="max-w-6xl mx-auto px-4 text-center">
+          <div className="max-w-6xl mx-auto px-4 text-center flex flex-col items-center gap-2">
             <p className="text-sm text-red-400 font-body opacity-75">{featuredError}</p>
+            <button
+              onClick={retry}
+              className="text-sm text-gold hover:underline font-body"
+            >
+              Retry
+            </button>
           </div>
         </section>
       )}

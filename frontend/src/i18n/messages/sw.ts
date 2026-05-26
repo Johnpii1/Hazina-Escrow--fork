@@ -350,6 +350,7 @@ export const sw: EnglishMessages = {
     demoModeNote: 'Hali ya demo — malipo yameigwa kwenye Stellar testnet',
     loading: 'Inatafiti...',
     errorTitle: 'Hitilafu ya wakala',
+    rateLimitError: 'Maombi mengi sana — tafadhali subiri kidogo kabla ya kujaribu tena.',
     result: {
       topOpportunity: 'Fursa bora',
       reasoning: 'Hoja',

@@ -352,6 +352,7 @@ export const es: EnglishMessages = {
     demoModeNote: 'Modo demo — pagos simulados en Stellar testnet',
     loading: 'Investigando...',
     errorTitle: 'Error del agente',
+    rateLimitError: 'Demasiadas solicitudes — espera un momento antes de volver a intentarlo.',
     result: {
       topOpportunity: 'Mejor oportunidad',
       reasoning: 'Razonamiento',

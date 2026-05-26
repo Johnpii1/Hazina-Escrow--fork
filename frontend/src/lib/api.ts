@@ -47,7 +47,9 @@ export const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 export const AGENT_REQUEST_TIMEOUT_MS = 120_000;
 
 const RAW_API_URL = (import.meta.env.VITE_API_URL ?? '').toString().trim();
-export const API_BASE_URL = RAW_API_URL ? `${RAW_API_URL.replace(/\/+$/, '')}/api` : '/api';
+export const API_BASE_URL = import.meta.env.DEV
+  ? (RAW_API_URL ? `${RAW_API_URL.replace(/\/+$/, '')}/api` : 'http://localhost:3001/api')
+  : `${RAW_API_URL.replace(/\/+$/, '')}/api`;
 
 const BASE = API_BASE_URL;
 const API_KEY = (import.meta.env.VITE_API_KEY ?? '').toString().trim();
