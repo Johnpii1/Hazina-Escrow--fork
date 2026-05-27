@@ -50,7 +50,6 @@
     ],
     [],
     [],
-    [],
     [
       [
         "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4",
@@ -72,11 +71,11 @@
                 {
                   "i128": {
                     "hi": 0,
-                    "lo": 4200000
+                    "lo": 1000000
                   }
                 },
                 {
-                  "string": "ds-formal-refund"
+                  "string": "ds-read-while-paused"
                 }
               ]
             }
@@ -97,7 +96,7 @@
                     {
                       "i128": {
                         "hi": 0,
-                        "lo": 4200000
+                        "lo": 1000000
                       }
                     }
                   ]
@@ -116,13 +115,10 @@
           "function": {
             "contract_fn": {
               "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM",
-              "function_name": "refund",
+              "function_name": "pause",
               "args": [
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"
-                },
-                {
-                  "u64": 0
                 }
               ]
             }
@@ -131,8 +127,6 @@
         }
       ]
     ],
-    [],
-    [],
     []
   ],
   "ledger": {
@@ -349,7 +343,7 @@
                       "val": {
                         "i128": {
                           "hi": 0,
-                          "lo": 4200000
+                          "lo": 1000000
                         }
                       }
                     },
@@ -366,7 +360,7 @@
                         "symbol": "dataset_id"
                       },
                       "val": {
-                        "string": "ds-formal-refund"
+                        "string": "ds-read-while-paused"
                       }
                     },
                     {
@@ -390,7 +384,7 @@
                         "symbol": "refunded"
                       },
                       "val": {
-                        "bool": true
+                        "bool": false
                       }
                     },
                     {
@@ -494,7 +488,7 @@
                           ]
                         },
                         "val": {
-                          "bool": false
+                          "bool": true
                         }
                       },
                       {
@@ -563,7 +557,7 @@
                       "val": {
                         "i128": {
                           "hi": 0,
-                          "lo": 10000000000
+                          "lo": 9999000000
                         }
                       }
                     },
@@ -636,7 +630,7 @@
                       "val": {
                         "i128": {
                           "hi": 0,
-                          "lo": 0
+                          "lo": 1000000
                         }
                       }
                     },
