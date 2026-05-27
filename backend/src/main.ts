@@ -6,6 +6,7 @@ dotenv.config();
 initializeDatadog();
 initializeSentry();
 
+import 'express-async-errors';
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -179,14 +180,6 @@ app.get('/health', async (_req, res) => {
   });
 });
 
-// Global error handling middleware — Issue #283 (standard error shape)
-app.use((err: Error, _req: Request, res: Response, _next: () => void) => {
-  const message = err.message || 'Internal server error';
-  console.error('[Global Error Handler]', err);
-  Sentry.captureException(err);
-  res.status(500).json({ error: message, code: 'INTERNAL_ERROR' });
-});
-
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason: unknown) => {
   console.error('[Unhandled Rejection]', reason);
@@ -205,6 +198,15 @@ app.use('/api', paymentsRouter);
 app.use('/api/agent', agentRouter);
 app.use('/api/webhooks', webhooksRouter);
 app.use('/api', backupRouter);
+
+// Global error handling middleware — Issue #283 (standard error shape)
+app.use((err: any, _req: Request, res: Response, _next: () => void) => {
+  const status = err.status ?? 500;
+  const message = err.message || 'Internal server error';
+  console.error('[Global Error Handler]', err);
+  Sentry.captureException(err);
+  res.status(status).json({ error: message, code: err.code || 'INTERNAL_ERROR' });
+});
 
 startDeliveryRetryWorker();
 
