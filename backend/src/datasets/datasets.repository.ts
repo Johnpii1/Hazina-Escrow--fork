@@ -88,7 +88,7 @@ export async function getTransactions(
   if (offset !== undefined && offset > 0) query = query.offset(offset);
   if (limit !== undefined && limit > 0) query = query.limit(limit);
   const rows = await query;
-  return rows.map(r => mapTransaction(r as TransactionRow));
+  return (rows as TransactionRow[]).map(r => mapTransaction(r));
 }
 
 export async function getTransactionsCount(datasetId?: string): Promise<number> {

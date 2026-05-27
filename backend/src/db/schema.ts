@@ -4,6 +4,7 @@ const isPostgres = process.env.DATABASE_URL?.startsWith('postgres') ?? false;
 
 const getSchemaObjects = () => {
   if (isPostgres) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { pgTable, text, integer, numeric, boolean } = require('drizzle-orm/pg-core');
 
     const datasets = pgTable('datasets', {
@@ -34,13 +35,17 @@ const getSchemaObjects = () => {
       sellerWallet: text('seller_wallet').notNull(),
       url: text('url').notNull(),
       secret: text('secret').notNull(),
-      events: text('events').array().notNull().default(sql`'{}'`),
+      events: text('events')
+        .array()
+        .notNull()
+        .default(sql`'{}'`),
       active: boolean('active').notNull().default(true),
       createdAt: text('created_at').notNull(),
     });
 
     return { datasets, transactions, webhooks };
   } else {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { sqliteTable, text, integer } = require('drizzle-orm/sqlite-core');
 
     const datasets = sqliteTable('datasets', {
