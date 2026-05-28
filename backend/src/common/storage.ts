@@ -10,6 +10,8 @@ import db from '../db/client';
 import { datasets, transactions, webhooks } from '../db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 
+const DATA_PATH = process.env.DATA_PATH || path.resolve(process.cwd(), 'data/datasets.json');
+
 export interface Dataset {
   id: string;
   name: string;
