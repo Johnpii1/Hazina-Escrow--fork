@@ -8,6 +8,10 @@ import {
   getTransactionByMemo,
   updateTransactionByMemo,
 } from '../common/storage';
+import { sellerShare, platformFee as computePlatformFee } from '../common/constants';
+import { generateDataSummary } from '../ai/claude.service';
+import { notifySeller } from '../webhooks/webhook.service';
+import { transactionEventEmitter } from '../websocket/transaction-events';
 // import { sellerShare, platformFee as computePlatformFee } from '../common/constants';
 // import { generateDataSummary } from '../ai/claude.service';
 // import { notifySeller } from '../webhooks/webhook.service';
@@ -127,10 +131,8 @@ export async function markDeliveryFailure(params: {
   const attempts = (existing?.deliveryAttempts ?? 0) + 1;
 
   await updateTransactionByHash(txHash, {
-//     status: 'delivery_failed',
-//     deliveryStatus: 'failed'
-    status: "delivery_failed",
-    deliveryStatus: "failed",
+    status: 'delivery_failed',
+    deliveryStatus: 'failed',
     deliveryError: message,
     deliveryAttempts: attempts,
     buyerQuery: buyerQuestion,

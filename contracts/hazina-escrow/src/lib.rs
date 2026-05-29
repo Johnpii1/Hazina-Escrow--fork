@@ -92,7 +92,7 @@ pub enum HazinaEscrowError {
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[derive(Clone, Eq, PartialEq, Debug)]
+
 
 pub struct EscrowRecord {
     pub escrow_id: u64,
@@ -937,6 +937,7 @@ mod tests {
         testutils::{Address as _, Ledger},
         testutils::Address as _,
         Bytes,
+
         token::{Client as TokenClient, StellarAssetClient},
         Address, Env, String,
     };
@@ -1626,6 +1627,28 @@ mod tests {
         client.pause(&admin);
         client.refund(&admin, &escrow_id);
     }
+
+    #[test]
+    #[should_panic(expected = "Error(Contract, #3)")]
+    fn test_unpause_requires_admin() {
+        let (env, client, admin, _buyer, _seller, _usdc) = setup();
+        let outsider = Address::generate(&env);
+        client.pause(&admin);
+        client.unpause(&outsider);
+    }
+
+    #[test]
+    fn test_get_escrow_works_while_paused() {
+        let (env, client, admin, buyer, seller, usdc) = setup();
+
+        let escrow_id = client.lock(
+            &buyer,
+            &seller,
+            &usdc,
+            &1_000_000,
+            &dataset_id(&env, "ds-read-while-paused"),
+        );
+
 
     #[test]
     #[should_panic(expected = "Error(Contract, #3)")]

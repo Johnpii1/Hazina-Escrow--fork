@@ -310,6 +310,7 @@ paymentsRouter.post(
         buyerQuestion,
       });
 
+    if (!dataset) return res.status(404).json({ error: 'Dataset not found' });
     if (await txHashUsed(txHash)) {
       return res.status(400).json({ error: 'Escrow already processed' });
     }
@@ -347,11 +348,11 @@ paymentsRouter.get('/admin/payouts/stuck', requireAdminKey, async (_req: Request
   }
 });
 
+
 // POST /api/verify/:id/demo — demo mode (skip Stellar check) for hackathon
 paymentsRouter.post("/verify/:id/demo", validateBody(verifyDemoSchema), async (req: Request, res: Response) => {
   const { buyerQuestion } = req.body as z.infer<typeof verifyDemoSchema>;
   const dataset = await getDataset(req.params.id);
-
       if (result.pendingDelivery) {
         return res.status(202).json(result);
       }
