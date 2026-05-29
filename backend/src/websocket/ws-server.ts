@@ -2,7 +2,6 @@ import { Server as HTTPServer, IncomingMessage } from 'http';
 import type { RawData } from 'ws';
 import { WebSocketServer, WebSocket } from 'ws';
 
-import { randomUUID } from 'crypto';
 import { Sentry } from '../common/sentry';
 import { transactionEventEmitter } from './transaction-events';
 import {
@@ -31,9 +30,6 @@ export class WebSocketServer_Hazina {
   private clients: Map<string, ClientSession> = new Map();
   private clientCounter: number = 0;
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
-
-  // private clientCounter: number = 0; // Removed - using UUID instead
-  private heartbeatInterval: NodeJS.Timer | null = null;
   private apiKey: string;
   private readonly MAX_SUBSCRIPTIONS_PER_CLIENT = 100; // Prevent memory exhaustion attacks
 
@@ -64,8 +60,6 @@ export class WebSocketServer_Hazina {
    */
   private handleConnection(ws: WebSocket, _req: IncomingMessage): void {
     const clientId = `client_${++this.clientCounter}`;
-  private handleConnection(ws: WebSocket, _req: unknown): void {
-    const clientId = `client_${randomUUID()}`;
     const session: ClientSession = {
       ws,
       subscribed: {
@@ -109,7 +103,7 @@ export class WebSocketServer_Hazina {
    * Handle incoming client messages
    */
 
-  private handleMessage(clientId: string, data: any): void {
+  private handleMessage(clientId: string, data: RawData): void {
     const session = this.clients.get(clientId);
     if (!session) return;
 
@@ -231,10 +225,6 @@ export class WebSocketServer_Hazina {
         return (
           session.subscribed.datasetIds.has(evt.data.datasetId) ||
           session.subscribed.transactionIds.has(evt.data.transactionId)
-        const dataEvent = evt as unknown;
-        return (
-          session.subscribed.datasetIds.has(dataEvent.data.datasetId) ||
-          session.subscribed.transactionIds.has(dataEvent.data.transactionId)
         );
       });
     });
@@ -244,10 +234,6 @@ export class WebSocketServer_Hazina {
         return (
           session.subscribed.datasetIds.has(evt.data.datasetId) ||
           session.subscribed.transactionIds.has(evt.data.transactionId)
-        const dataEvent = evt as unknown;
-        return (
-          session.subscribed.datasetIds.has(dataEvent.data.datasetId) ||
-          session.subscribed.transactionIds.has(dataEvent.data.transactionId)
         );
       });
     });
@@ -257,11 +243,6 @@ export class WebSocketServer_Hazina {
         return (
           session.subscribed.datasetIds.has(evt.data.datasetId) ||
           session.subscribed.transactionIds.has(evt.data.transactionId)
-
-        const dataEvent = evt as unknown;
-        return (
-          session.subscribed.datasetIds.has(dataEvent.data.datasetId) ||
-          session.subscribed.transactionIds.has(dataEvent.data.transactionId)
         );
       });
     });
@@ -271,10 +252,6 @@ export class WebSocketServer_Hazina {
         return (
           session.subscribed.datasetIds.has(evt.data.datasetId) ||
           session.subscribed.transactionIds.has(evt.data.transactionId)
-        const dataEvent = evt as unknown;
-        return (
-          session.subscribed.datasetIds.has(dataEvent.data.datasetId) ||
-          session.subscribed.transactionIds.has(dataEvent.data.transactionId)
         );
       });
     });
@@ -310,7 +287,6 @@ export class WebSocketServer_Hazina {
     clientId: string,
     message: ServerEvent | PongMessage | ErrorMessage | Record<string, unknown>,
   ): void {
-  private sendMessage(clientId: string, message: unknown): void {
     const session = this.clients.get(clientId);
     if (session && session.ws.readyState === WebSocket.OPEN) {
       session.ws.send(JSON.stringify(message));
@@ -409,4 +385,3 @@ export function initializeWebSocketServer(
 export function getWebSocketServer(): WebSocketServer_Hazina | null {
   return wsServer;
 }
-\nimport { logger } from '../lib/logger';
