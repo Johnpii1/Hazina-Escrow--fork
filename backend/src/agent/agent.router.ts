@@ -215,6 +215,8 @@ agentRouter.post('/research', validateBody(researchSchema), async (req: Request,
         agentWallet: job.agentWallet,
         timestamp: job.timestamp,
         datasetsQueried: job.purchases.length,
+        datasetsAvailable: job.datasetsAvailable,
+        datasetsTotal: job.datasetsTotal,
       },
     });
   } catch (err: unknown) {
@@ -283,6 +285,8 @@ agentRouter.post(
         agentWallet: job.agentWallet ?? 'demo-wallet',
         timestamp: job.timestamp,
         datasetsQueried: job.purchases.length,
+        datasetsAvailable: job.datasetsAvailable,
+        datasetsTotal: job.datasetsTotal,
       },
     });
   } catch (err: unknown) {
