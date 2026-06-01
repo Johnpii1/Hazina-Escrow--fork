@@ -13,6 +13,7 @@ import {
 import { validateBody } from '../common/validate';
 import { notifySeller, signPayload } from './webhook.service';
 import { requireApiKey } from '../common/auth.middleware';
+import { logger } from '../lib/logger';
 import { processPayment } from '../payments/payments.service';
 
 export const webhooksRouter = Router();
@@ -51,7 +52,7 @@ const webhookUrlField = z
 const webhookEventsField = z
   .array(z.string())
   .superRefine((events, ctx) => {
-    const invalid = events.filter((e) => !VALID_EVENTS.includes(e as WebhookEvent));
+    const invalid = events.filter(e => !VALID_EVENTS.includes(e as WebhookEvent));
     if (invalid.length > 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -59,7 +60,7 @@ const webhookEventsField = z
       });
     }
   })
-  .transform((events) => events as WebhookEvent[]);
+  .transform(events => events as WebhookEvent[]);
 
 const createWebhookSchema = z.object({
   sellerWallet: z
@@ -80,7 +81,7 @@ const updateWebhookSchema = z
     active: z.boolean().optional(),
   })
   .refine(
-    (data) =>
+    data =>
       data.url !== undefined ||
       data.secret !== undefined ||
       data.events !== undefined ||
@@ -105,7 +106,7 @@ webhooksRouter.post('/payment', async (req: Request, res: Response) => {
 
   const secret = process.env.PAYMENT_WEBHOOK_SECRET;
   if (!secret) {
-    console.error('[Webhook] PAYMENT_WEBHOOK_SECRET not set');
+    logger.error('[Webhook] PAYMENT_WEBHOOK_SECRET not set');
     return res.status(500).json({ error: 'Webhook configuration error' });
   }
 
@@ -113,7 +114,7 @@ webhooksRouter.post('/payment', async (req: Request, res: Response) => {
   const expectedSignature = signPayload(bodyString, secret);
 
   if (signature !== expectedSignature) {
-    console.warn('[Webhook] Invalid signature received');
+    logger.warn('[Webhook] Invalid signature received');
     return res.status(401).json({ error: 'Invalid signature' });
   }
 
@@ -139,39 +140,44 @@ webhooksRouter.post('/payment', async (req: Request, res: Response) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`[Webhook] Payment processing failed: ${message}`);
+    logger.error(`[Webhook] Payment processing failed: ${message}`);
     return res.status(400).json({ error: message });
   }
 });
 
 // POST /api/webhooks — register a new webhook
-webhooksRouter.post('/', requireApiKey, validateBody(createWebhookSchema), async (req: Request, res: Response) => {
-  const { sellerWallet, url, secret, events } = req.body as z.infer<typeof createWebhookSchema>;
+webhooksRouter.post(
+  '/',
+  requireApiKey,
+  validateBody(createWebhookSchema),
+  async (req: Request, res: Response) => {
+    const { sellerWallet, url, secret, events } = req.body as z.infer<typeof createWebhookSchema>;
 
-  const webhook = {
-    id: `wh-${uuidv4()}`,
-    sellerWallet,
-    url,
-    secret,
-    events: events ?? [],
-    active: true,
-    createdAt: new Date().toISOString(),
-  };
+    const webhook = {
+      id: `wh-${uuidv4()}`,
+      sellerWallet,
+      url,
+      secret,
+      events: events ?? [],
+      active: true,
+      createdAt: new Date().toISOString(),
+    };
 
-  await addWebhook(webhook);
+    await addWebhook(webhook);
 
-  return res.status(201).json({
-    success: true,
-    webhook: {
-      id: webhook.id,
-      sellerWallet: webhook.sellerWallet,
-      url: webhook.url,
-      events: webhook.events,
-      active: webhook.active,
-      createdAt: webhook.createdAt,
-    },
-  });
-});
+    return res.status(201).json({
+      success: true,
+      webhook: {
+        id: webhook.id,
+        sellerWallet: webhook.sellerWallet,
+        url: webhook.url,
+        events: webhook.events,
+        active: webhook.active,
+        createdAt: webhook.createdAt,
+      },
+    });
+  },
+);
 
 // GET /api/webhooks/:sellerWallet — list webhooks for a seller
 webhooksRouter.get('/:sellerWallet', async (req: Request, res: Response) => {
@@ -215,18 +221,23 @@ webhooksRouter.post('/:id/test', requireApiKey, async (req: Request, res: Respon
 });
 
 // PATCH /api/webhooks/:id — update webhook (url, secret, events, active)
-webhooksRouter.patch('/:id', requireApiKey, validateBody(updateWebhookSchema), async (req: Request, res: Response) => {
-  const webhook = await getWebhookById(req.params.id);
-  if (!webhook) {
-    return res.status(404).json({ error: 'Webhook not found' });
-  }
+webhooksRouter.patch(
+  '/:id',
+  requireApiKey,
+  validateBody(updateWebhookSchema),
+  async (req: Request, res: Response) => {
+    const webhook = await getWebhookById(req.params.id);
+    if (!webhook) {
+      return res.status(404).json({ error: 'Webhook not found' });
+    }
 
-  const updates = req.body as z.infer<typeof updateWebhookSchema>;
-  const updated = await updateWebhook(req.params.id, updates);
-  if (!updated) {
-    return res.status(500).json({ error: 'Failed to update webhook' });
-  }
+    const updates = req.body as z.infer<typeof updateWebhookSchema>;
+    const updated = await updateWebhook(req.params.id, updates);
+    if (!updated) {
+      return res.status(500).json({ error: 'Failed to update webhook' });
+    }
 
-  const { secret: _secret, ...rest } = updated;
-  return res.json({ success: true, webhook: rest });
-});
+    const { secret: _secret, ...rest } = updated;
+    return res.json({ success: true, webhook: rest });
+  },
+);
