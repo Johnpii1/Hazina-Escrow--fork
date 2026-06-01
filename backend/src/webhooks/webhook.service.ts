@@ -4,6 +4,7 @@ import http from 'http';
 import { URL } from 'url';
 import { WebhookEvent, WebhookSubscription, getWebhooksForSeller } from '../common/storage';
 import { getCircuitBreaker, CircuitBreakerOpenError } from '../common/circuit-breaker';
+import { logger } from '../lib/logger';
 
 /**
  * Each webhook subscriber gets its own circuit breaker keyed by subscription ID.
@@ -71,7 +72,7 @@ export async function dispatchWebhook(
 
   // Fail-fast when this subscriber's circuit is open
   if (breaker.getState() === 'OPEN') {
-    console.warn(
+    logger.warn(
       `[Webhook] Circuit OPEN for ${subscription.url} (${subscription.id}) — skipping dispatch`,
     );
     return;
@@ -81,20 +82,20 @@ export async function dispatchWebhook(
     try {
       const statusCode = await breaker.execute(() => sendRequest(client, options, bodyString));
       if (statusCode >= 200 && statusCode < 300) {
-        console.log(`[Webhook] Dispatched ${event} to ${subscription.url} (${subscription.id})`);
+        logger.info(`[Webhook] Dispatched ${event} to ${subscription.url} (${subscription.id})`);
         return;
       }
       // Treat non-2xx as a failure so the breaker counts it
       throw new Error(`HTTP ${statusCode}`);
     } catch (err) {
       if (err instanceof CircuitBreakerOpenError) {
-        console.warn(
+        logger.warn(
           `[Webhook] Circuit opened for ${subscription.url} (${subscription.id}) — aborting retries`,
         );
         return;
       }
       const message = err instanceof Error ? err.message : String(err);
-      console.warn(`[Webhook] Attempt ${attempt + 1} error: ${message} for ${subscription.url}`);
+      logger.warn(`[Webhook] Attempt ${attempt + 1} error: ${message} for ${subscription.url}`);
     }
 
     if (attempt < MAX_RETRIES - 1) {
@@ -102,7 +103,7 @@ export async function dispatchWebhook(
     }
   }
 
-  console.error(
+  logger.error(
     `[Webhook] All retries exhausted for ${subscription.url} (${subscription.id}) event=${event}`,
   );
 }
