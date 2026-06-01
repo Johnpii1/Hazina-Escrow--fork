@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Upload,
   CheckCircle,
@@ -40,21 +40,58 @@ const INITIAL: FormState = {
   dataText: '',
 };
 
-const STORAGE_KEY = 'hazina_sell_form_draft';
+const STORAGE_KEY = "hazina_sell_form_draft";
+const DRAFT_EXPIRY_HOURS = 24;
 
-function loadDraft(): FormState {
+interface StoredDraft {
+  data: Omit<FormState, "sellerWallet">; // Exclude sensitive wallet address
+  timestamp: number;
+}
+
+function loadDraft(): {
+  form: FormState;
+  wasRestored: boolean;
+} {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return INITIAL;
-    return { ...INITIAL, ...(JSON.parse(raw) as Partial<FormState>) };
+    if (!raw) return { form: INITIAL, wasRestored: false };
+
+    const stored: StoredDraft = JSON.parse(raw);
+    const ageHours = (Date.now() - stored.timestamp) / (1000 * 60 * 60);
+
+    // Discard draft if older than 24 hours
+    if (ageHours > DRAFT_EXPIRY_HOURS) {
+      localStorage.removeItem(STORAGE_KEY);
+      return { form: INITIAL, wasRestored: false };
+    }
+
+    // Restore data but keep wallet empty for security
+    const restoredForm: FormState = {
+      ...INITIAL,
+      ...stored.data,
+      sellerWallet: "", // Never restore sensitive wallet address
+    };
+
+    return { form: restoredForm, wasRestored: true };
   } catch {
-    return INITIAL;
+    return { form: INITIAL, wasRestored: false };
   }
 }
 
 function saveDraft(form: FormState): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
+    const toStore: StoredDraft = {
+      // Only save non-sensitive fields
+      data: {
+        name: form.name,
+        description: form.description,
+        type: form.type,
+        pricePerQuery: form.pricePerQuery,
+        dataText: form.dataText,
+      },
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
   } catch {
     // localStorage may be unavailable in certain browser contexts
   }
@@ -68,6 +105,7 @@ function clearDraft(): void {
   }
 }
 
+
 export default function SellPage() {
   const { locale, t } = useI18n();
   const catalog = getCatalog(locale);
@@ -79,25 +117,26 @@ export default function SellPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
-  const [jsonError, setJsonError] = useState('');
-  const [walletTouched, setWalletTouched] = useState(false);
-  const [priceTouched, setPriceTouched] = useState(false);
-  const confirmBtnRef = useRef<HTMLButtonElement>(null);
+  const [jsonError, setJsonError] = useState("");
+  const [toast, setToast] = useState<ToastProps | null>(null);
 
+  // Track if we've shown the draft restored toast
+  const hasShownRestoreToastRef = useRef(false);
+
+  // Show draft restored notification on first load
   useEffect(() => {
-    if (showConfirm) {
-      confirmBtnRef.current?.focus();
+    if (!hasShownRestoreToastRef.current) {
+      hasShownRestoreToastRef.current = true;
+      const { wasRestored } = loadDraft();
+      if (wasRestored) {
+        setToast({
+          message: t("sell.messages.draftRestored"),
+          type: "success",
+          duration: 3000,
+        });
+      }
     }
-  }, [showConfirm]);
-
-  useEffect(() => {
-    if (!showConfirm) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowConfirm(false);
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showConfirm]);
+  }, [t]);
 
   // Persist form draft across page reloads
   useEffect(() => {
@@ -634,6 +673,11 @@ export default function SellPage() {
           </div>
         </div>
       </div>
+
+      {/* Toast notification */}
+      {toast && (
+        <Toast {...toast} onClose={() => setToast(null)} />
+      )}
     </div>
   );
 }
