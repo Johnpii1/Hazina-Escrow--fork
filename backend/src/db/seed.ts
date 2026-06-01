@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { eq } from 'drizzle-orm';
 import db from './client';
 import { datasets, transactions, datasetsSqlite, transactionsSqlite } from './schema';
+import { logger } from '../lib/logger';
 
 const isPostgres =
   (process.env.DATABASE_URL ?? '').startsWith('postgres://') ||
@@ -40,10 +41,8 @@ async function seedDatasets(jsonData: Record<string, unknown>): Promise<void> {
   }
 
   for (const dataset of jsonData.datasets as DatasetFromJSON[]) {
-    const existing = await db.select().from(datasets).where(eq(datasets.id, dataset.id)).limit(1);
     const existing = await db
       .select()
-      // @ts-expect-error - Drizzle union type limitation between PostgreSQL and SQLite
       .from(datasetsTable as typeof datasets)
       .where(eq((datasetsTable as typeof datasets).id, dataset.id))
       .limit(1);
@@ -116,10 +115,9 @@ async function seed(): Promise<void> {
     logger.info('Seeding complete!');
     process.exit(0);
   } catch (error) {
-    logger.error('Seed error:', error);
+    logger.error(`Seed error: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);
   }
 }
 
 seed();
-\nimport { logger } from '../lib/logger';

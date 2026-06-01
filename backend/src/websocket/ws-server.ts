@@ -12,6 +12,7 @@ import {
   SubscribeMessage,
   UnsubscribeMessage,
 } from './ws.types';
+import { logger } from '../lib/logger';
 
 interface ClientSession {
   ws: WebSocket;
@@ -79,7 +80,9 @@ export class WebSocketServer_Hazina {
 
     // Handle connection errors
     ws.on('error', error => {
-      logger.error(`[WebSocket] Error for ${clientId}:`, error);
+      logger.error(
+        `[WebSocket] Error for ${clientId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
       Sentry.captureException(error, { tags: { clientId } });
     });
 

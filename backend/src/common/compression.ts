@@ -14,6 +14,8 @@
  *    compression), and adds `Vary: Accept-Encoding`.
  */
 
+import { logger } from '../lib/logger';
+
 import zlib from 'zlib';
 import { Request, Response, NextFunction } from 'express';
 
@@ -224,4 +226,3 @@ export function createCompressionMiddleware(options: CompressionOptions = {}) {
     next();
   };
 }
-\nimport { logger } from '../lib/logger';

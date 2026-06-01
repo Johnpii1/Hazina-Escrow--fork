@@ -1,4 +1,5 @@
 import tracer from 'dd-trace';
+import { logger } from '../lib/logger';
 
 type MetricTagValue = string | number | boolean | null | undefined;
 type MetricTags = Record<string, MetricTagValue>;
@@ -322,4 +323,3 @@ export function initializeDatadog(): void {
 }
 
 export { tracer };
-\nimport { logger } from '../lib/logger';

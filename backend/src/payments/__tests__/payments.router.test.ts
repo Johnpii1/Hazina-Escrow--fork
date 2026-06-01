@@ -13,6 +13,18 @@ vi.mock('../../lib/contract.client', () => ({
 
 vi.mock('../stellar.service', () => ({
   verifyStellarPayment: vi.fn(),
+  StellarTimeoutError: class StellarTimeoutError extends Error {
+    constructor(timeoutMs: number) {
+      super(`Stellar Horizon did not respond within ${timeoutMs / 1000} seconds.`);
+      this.name = 'StellarTimeoutError';
+    }
+  },
+  PaymentError: class PaymentError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = 'PaymentError';
+    }
+  },
 }));
 
 vi.mock('../../ai/claude.service', () => ({
@@ -26,8 +38,13 @@ vi.mock('../../webhooks/webhook.service', () => ({
 vi.mock('../../common/datadog', () => ({
   domainMetrics: {
     paymentVerified: vi.fn(),
+    paymentVerificationError: vi.fn(),
+    paymentDeliveryFailed: vi.fn(),
+    deliveryRetryAttempt: vi.fn(),
     datasetQueried: vi.fn(),
     agentJobCompleted: vi.fn(),
+    stellarPaymentVerified: vi.fn(),
+    stellarTimeout: vi.fn(),
   },
 }));
 
@@ -40,6 +57,17 @@ vi.mock('../../common/storage', async importOriginal => {
     addTransaction: vi.fn(() => Promise.resolve()),
     updateDataset: vi.fn(() => Promise.resolve()),
     updateTransactionByHash: vi.fn(() => Promise.resolve(null)),
+    updateTransactionByMemo: vi.fn(() => Promise.resolve(null)),
+    getTransactionByMemo: vi.fn(() =>
+      Promise.resolve({
+        id: 'tx-pending',
+        datasetId: 'ds-test-1',
+        txHash: '',
+        memo: 'haz',
+        amount: 1,
+        timestamp: new Date().toISOString(),
+      }),
+    ),
     getUnpaidTransactions: vi.fn(() => Promise.resolve([])),
   };
 });
