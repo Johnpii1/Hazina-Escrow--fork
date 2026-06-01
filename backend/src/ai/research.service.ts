@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { getAnthropicResearchModel } from './anthropic.config';
 import { AnthropicTimeoutError } from './claude.service';
+import { logger } from '../lib/logger';
 
 // Configurable via env; default 60 seconds (shared with claude.service)
 const ANTHROPIC_TIMEOUT_MS = parseInt(process.env.ANTHROPIC_TIMEOUT_MS ?? '60000', 10);
@@ -135,7 +136,7 @@ Respond ONLY with valid JSON in this exact shape (no markdown fences):
     }
 
     // Retry with stricter prompt
-    console.warn('[synthesizeResearch] Initial parse failed, retrying with stricter prompt');
+    logger.warn('[synthesizeResearch] Initial parse failed, retrying with stricter prompt');
 
     const stricterPrompt = `${prompt}
 
