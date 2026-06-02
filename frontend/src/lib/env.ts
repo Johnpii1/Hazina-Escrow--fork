@@ -20,6 +20,21 @@ export interface EnvConfig {
 
 const REQUIRED_ENV_VARS = ['VITE_API_URL', 'VITE_API_KEY'] as const;
 
+function readEnableDemoMode(): boolean {
+  return (
+    String((import.meta.env as Record<string, string | undefined>).VITE_ENABLE_DEMO_MODE ?? '')
+      .trim()
+      .toLowerCase() === 'true'
+  );
+}
+
+/**
+ * Returns whether demo mode is enabled via the VITE_ENABLE_DEMO_MODE env var.
+ */
+export function isDemoModeEnabled(): boolean {
+  return readEnableDemoMode();
+}
+
 /**
  * Validate required environment variables and return a typed config object.
  * Throws a descriptive error when a required variable is missing or empty.
