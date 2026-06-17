@@ -1,23 +1,22 @@
+import { v4 as uuidv4 } from 'uuid';
 import { sellerShare, platformFee as computePlatformFee } from '../common/constants';
+import { domainMetrics } from '../common/datadog';
+import { Sentry } from '../common/sentry';
 import { generateDataSummary } from '../ai/claude.service';
 import { notifySeller } from '../webhooks/webhook.service';
 import { transactionEventEmitter } from '../websocket/transaction-events';
 import { verifyStellarPayment, PaymentError } from './stellar.service';
+import { logger } from '../lib/logger';
 import {
+  addTransaction,
   getDataset,
   getTransactionByHash,
-  updateTransactionByHash,
-  addTransaction,
   getTransactionByMemo,
-  updateTransactionByMemo,
   getTransactionsWithFailedSellerNotification,
+  updateDataset,
+  updateTransactionByHash,
+  updateTransactionByMemo,
 } from '../common/storage';
-import { Sentry } from '../common/sentry';
-import { sellerShare, platformFee as computePlatformFee } from '../common/constants';
-import { generateDataSummary } from '../ai/claude.service';
-import { notifySeller } from '../webhooks/webhook.service';
-import { transactionEventEmitter } from '../websocket/transaction-events';
-import { verifyStellarPayment, PaymentError } from './stellar.service';
 
 export interface DeliveryResult {
   success: boolean;
@@ -275,23 +274,6 @@ export async function processPayment(params: {
   if (memoOwner.datasetId !== datasetId) {
     throw new PaymentError(
       'Payment memo belongs to a different dataset — use the memo generated for this specific query',
-    );
-  }
-
-  // Bind the payment to this specific dataset via its memo.
-  // Without this check a buyer could redirect a payment made for dataset A (using
-  // its memo) to unlock dataset B if both share the same price — the memo on the
-  // Stellar transaction is the only artefact that ties a payment to a purchase.
-  const txMemo = verification.memo ?? '';
-  if (!txMemo) {
-    throw new Error(
-      'Payment must include the memo provided at query initiation — memo-less payments cannot be bound to a specific dataset',
-    );
-  }
-  const memoOwner = await getTransactionByMemo(txMemo);
-  if (!memoOwner) {
-    throw new Error(
-      'Payment memo does not match any pending transaction — ensure you used the memo from your query initiation',
     );
   }
 

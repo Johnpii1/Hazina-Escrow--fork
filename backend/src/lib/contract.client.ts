@@ -8,6 +8,12 @@ function contractId(): string {
   return process.env.CONTRACT_ID || DEFAULT_CONTRACT_ID;
 }
 
+function agentWalletSecret(): string {
+  const secret = process.env.AGENT_WALLET_SECRET;
+  if (!secret) throw new Error('AGENT_WALLET_SECRET not configured');
+  return secret;
+}
+
 export interface EscrowRecord {
   escrow_id: bigint;
   dataset_id: string;
@@ -28,8 +34,7 @@ export function usdcToStroops(usdc: number): bigint {
  * Throws if the escrow does not exist.
  */
 export async function getEscrow(escrowId: number): Promise<EscrowRecord> {
-  const secret = process.env.AGENT_WALLET_SECRET;
-  if (!secret) throw new Error('AGENT_WALLET_SECRET not configured');
+  const secret = agentWalletSecret();
 
   const keypair = StellarSdk.Keypair.fromSecret(secret);
   const rpc = new StellarSdk.rpc.Server(SOROBAN_RPC_URL);
@@ -71,9 +76,7 @@ export async function getEscrow(escrowId: number): Promise<EscrowRecord> {
  * Returns the confirmed transaction hash.
  */
 export async function releaseEscrow(escrowId: number): Promise<string> {
-  const adminPublicKey = StellarSdk.Keypair.fromSecret(
-    process.env.AGENT_WALLET_SECRET!,
-  ).publicKey();
+  const adminPublicKey = StellarSdk.Keypair.fromSecret(agentWalletSecret()).publicKey();
 
   return callContract(contractId(), 'release', [
     new StellarSdk.Address(adminPublicKey).toScVal(),
@@ -86,9 +89,7 @@ export async function releaseEscrow(escrowId: number): Promise<string> {
  * Returns the confirmed transaction hash.
  */
 export async function refundEscrow(escrowId: number): Promise<string> {
-  const adminPublicKey = StellarSdk.Keypair.fromSecret(
-    process.env.AGENT_WALLET_SECRET!,
-  ).publicKey();
+  const adminPublicKey = StellarSdk.Keypair.fromSecret(agentWalletSecret()).publicKey();
 
   return callContract(contractId(), 'refund', [
     new StellarSdk.Address(adminPublicKey).toScVal(),

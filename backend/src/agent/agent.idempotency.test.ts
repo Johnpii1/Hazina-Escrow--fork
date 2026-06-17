@@ -5,7 +5,6 @@ vi.mock('uuid', () => ({
 }));
 
 import { runResearchAgent } from './agent.service';
-import { txHashUsed, reserveTxHash, getAgentJobByTxHash } from '../common/storage';
 import { sendUsdcPayment } from './agent.wallet';
 import { verifyStellarPayment } from '../payments/stellar.service';
 

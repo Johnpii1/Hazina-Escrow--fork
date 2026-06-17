@@ -146,7 +146,6 @@ export interface AgentInfo {
   };
 }
 
-
 export interface DatasetMeta {
   id: string;
   name: string;
@@ -263,7 +262,6 @@ export const QueryResultSchema = z.object({
   }),
 });
 export type QueryResult = z.infer<typeof QueryResultSchema>;
-
 
 interface RequestOptions extends RequestInit {
   /** Per-call override of the abort timeout, in milliseconds. */
