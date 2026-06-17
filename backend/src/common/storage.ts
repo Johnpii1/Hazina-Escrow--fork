@@ -24,8 +24,6 @@ export function reserveTxHash(txHash: string): () => void {
 // In-memory cache: populated on first read, invalidated on every write.
 let cache: Store | null = null;
 
-const DATA_PATH = process.env.DATA_PATH || path.resolve(process.cwd(), 'data/datasets.json');
-
 async function writeStoreFile(store: Store): Promise<void> {
   const tempPath = path.join(
     path.dirname(DATA_PATH),
@@ -153,9 +151,9 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function readRaw(): Promise<Store> {
+async function readStoreInternal(): Promise<Store> {
   if (!existsSync(DATA_PATH)) {
-    const empty: Store = { datasets: [], transactions: [], webhooks: [], payoutFailures: [] };
+    const empty = createEmptyStore();
     await writeStoreFile(empty);
     return empty;
   }
@@ -167,14 +165,7 @@ async function readRaw(): Promise<Store> {
   return normalizeStore(parsed);
 }
 
-async function persistStore(store: Store): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  const serialized = JSON.stringify(store, null, 2);
-  const tempPath = `${DATA_PATH}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`;
-  await fs.writeFile(tempPath, serialized, 'utf-8');
-  await fs.rename(tempPath, DATA_PATH);
-  cache = null;
-}
+let writeQueue: Promise<void> = Promise.resolve();
 
 type LockHandle = Awaited<ReturnType<typeof fs.open>>;
 
@@ -229,18 +220,6 @@ function enqueueWrite<T>(task: () => Promise<T>): Promise<T> {
   return run;
 }
 
-
-// Runs fn inside the serialized queue. fn receives the current store and must
-// return the (possibly mutated) store to persist, plus an optional result.
-function enqueue<T>(fn: (store: Store) => Promise<[Store, T]>): Promise<T> {
-  let resolve!: (value: T) => void;
-  let reject!: (reason: unknown) => void;
-  const result = new Promise<T>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-  mutationQueue = mutationQueue.then(async () => {
-
 async function withLockedWrite<T>(task: () => Promise<T>): Promise<T> {
   return enqueueWrite(async () => {
     const lock = await acquireLock();
@@ -255,7 +234,7 @@ async function withLockedWrite<T>(task: () => Promise<T>): Promise<T> {
 
 async function updateStore<T>(mutator: (store: Store) => Promise<T> | T): Promise<T> {
   return withLockedWrite(async () => {
-    const store = await readRaw();
+    const store = await readStoreInternal();
     const result = await mutator(store);
     await writeStoreFile(store);
     return result;
@@ -280,11 +259,7 @@ export async function writeStore(store: Store): Promise<void> {
 }
 
 export async function getDataset(id: string): Promise<Dataset | undefined> {
-
-  return (await readStore()).datasets.find(d => d.id === id);
-
   return (await readStore()).datasets.find(dataset => dataset.id === id);
-
 }
 
 export async function getAllDatasets(): Promise<Dataset[]> {
@@ -295,13 +270,6 @@ export async function updateDataset(
   id: string,
   updates: Partial<Dataset>,
 ): Promise<Dataset | null> {
-
-  return enqueue(async store => {
-    const idx = store.datasets.findIndex(d => d.id === id);
-    if (idx === -1) return [store, null];
-    store.datasets[idx] = { ...store.datasets[idx], ...updates };
-    return [store, store.datasets[idx]];
-
   return updateStore(async store => {
     const index = store.datasets.findIndex(dataset => dataset.id === id);
     if (index === -1) {
@@ -310,33 +278,22 @@ export async function updateDataset(
 
     store.datasets[index] = { ...store.datasets[index], ...updates };
     return store.datasets[index];
-
   });
 }
 
 export async function addDataset(dataset: Dataset): Promise<void> {
-
-  return enqueue(async store => {
-
   return updateStore(async store => {
- main
     store.datasets.push(dataset);
   });
 }
 
 export async function addTransaction(tx: Transaction): Promise<void> {
-
-  pendingTxHashes.add(tx.txHash);
-  return enqueue(async store => {
-
   if (tx.txHash) {
     pendingTxHashes.add(tx.txHash);
   }
 
   return updateStore(async store => {
-
     store.transactions.push(tx);
-    // Prune oldest entries once the rolling window is exceeded (#368)
     if (store.transactions.length > MAX_TRANSACTIONS_WINDOW) {
       store.transactions = store.transactions.slice(
         store.transactions.length - MAX_TRANSACTIONS_WINDOW,
@@ -349,20 +306,13 @@ export async function addTransaction(tx: Transaction): Promise<void> {
   });
 }
 
-
-
 export async function getTransactionByHash(txHash: string): Promise<Transaction | undefined> {
   return (await readStore()).transactions.find(transaction => transaction.txHash === txHash);
 }
 
-/**
- * Returns the top-level agent-job transaction for a given human payment txHash.
- * Used to serve a cached result when the same txHash is submitted more than once
- * (idempotency key behaviour).
- */
 export async function getAgentJobByTxHash(txHash: string): Promise<Transaction | undefined> {
   return (await readStore()).transactions.find(
-    tx => tx.txHash === txHash && tx.datasetId === 'agent-job',
+    transaction => transaction.txHash === txHash && transaction.datasetId === 'agent-job',
   );
 }
 
@@ -400,7 +350,6 @@ export async function updateTransactionByMemo(
   });
 }
 
-
 export async function getTransactions(
   datasetId?: string,
   limit?: number,
@@ -408,11 +357,7 @@ export async function getTransactions(
 ): Promise<Transaction[]> {
   const store = await readStore();
   let transactions = datasetId
-
-    ? store.transactions.filter(t => t.datasetId === datasetId)
-
     ? store.transactions.filter(transaction => transaction.datasetId === datasetId)
-
     : store.transactions;
 
   if (offset !== undefined && offset > 0) {
@@ -429,23 +374,8 @@ export async function getTransactions(
 export async function getTransactionsCount(datasetId?: string): Promise<number> {
   const store = await readStore();
   return datasetId
-
-    ? store.transactions.filter(t => t.datasetId === datasetId).length
-    : store.transactions.length;
-}
-
-export async function txHashUsed(txHash: string): Promise<boolean> {
-  if (pendingTxHashes.has(txHash)) return true;
-  return (await readStore()).transactions.some(t => t.txHash === txHash);
-
     ? store.transactions.filter(transaction => transaction.datasetId === datasetId).length
     : store.transactions.length;
-}
-
-export async function getFailedDeliveryTransactions(): Promise<Transaction[]> {
-  const store = await readStore();
-  return store.transactions.filter(transaction => transaction.deliveryStatus === 'failed');
-
 }
 
 export async function txHashUsed(txHash: string): Promise<boolean> {
@@ -460,22 +390,16 @@ export async function txHashUsed(txHash: string): Promise<boolean> {
   return (await readStore()).transactions.some(transaction => transaction.txHash === txHash);
 }
 
+export async function getFailedDeliveryTransactions(): Promise<Transaction[]> {
+  const store = await readStore();
+  return store.transactions.filter(transaction => transaction.deliveryStatus === 'failed');
+}
+
 export async function getAllWebhooks(): Promise<WebhookSubscription[]> {
   return (await readStore()).webhooks;
 }
 
 export async function getWebhooksForSeller(sellerWallet: string): Promise<WebhookSubscription[]> {
-
-  return (await readStore()).webhooks.filter(w => w.sellerWallet === sellerWallet && w.active);
-}
-
-export async function getWebhookById(id: string): Promise<WebhookSubscription | undefined> {
-  return (await readStore()).webhooks.find(w => w.id === id);
-}
-
-export async function addWebhook(webhook: WebhookSubscription): Promise<void> {
-  return enqueue(async store => {
-
   return (await readStore()).webhooks.filter(
     webhook => webhook.sellerWallet === sellerWallet && webhook.active,
   );
@@ -487,31 +411,11 @@ export async function getWebhookById(id: string): Promise<WebhookSubscription | 
 
 export async function addWebhook(webhook: WebhookSubscription): Promise<void> {
   return updateStore(async store => {
-
     store.webhooks.push(webhook);
   });
 }
 
 export async function removeWebhook(id: string): Promise<boolean> {
-
-  return enqueue(async store => {
-    const idx = store.webhooks.findIndex(w => w.id === id);
-    if (idx === -1) return [store, false];
-    store.webhooks.splice(idx, 1);
-    return [store, true];
-  });
-}
-
-export async function updateWebhook(
-  id: string,
-  updates: Partial<WebhookSubscription>,
-): Promise<WebhookSubscription | null> {
-  return enqueue(async store => {
-    const idx = store.webhooks.findIndex(w => w.id === id);
-    if (idx === -1) return [store, null];
-    store.webhooks[idx] = { ...store.webhooks[idx], ...updates };
-    return [store, store.webhooks[idx]];
-
   return updateStore(async store => {
     const index = store.webhooks.findIndex(webhook => webhook.id === id);
     if (index === -1) {
@@ -562,7 +466,6 @@ export async function updatePayoutFailure(
 
     store.payoutFailures[index] = { ...store.payoutFailures[index], ...updates };
     return store.payoutFailures[index];
-
   });
 }
 
@@ -581,21 +484,15 @@ export async function getPendingPayoutFailures(nowIso: string): Promise<PayoutFa
 
 export async function getUnpaidTransactions(): Promise<Transaction[]> {
   const store = await readStore();
-
-  return store.transactions.filter(t => t.sellerPaid === false);
-
   return store.transactions.filter(transaction => transaction.sellerPaid === false);
 }
 
-// Returns completed transactions where the seller notification failed and has not
-// yet exhausted retries. Used by the seller notification retry worker.
 export async function getTransactionsWithFailedSellerNotification(): Promise<Transaction[]> {
   const store = await readStore();
   return store.transactions.filter(
-    t =>
-      t.status === 'completed' &&
-      t.sellerNotificationError !== undefined &&
-      t.sellerNotifiedAt === undefined,
+    transaction =>
+      transaction.status === 'completed' &&
+      transaction.sellerNotificationError !== undefined &&
+      transaction.sellerNotifiedAt === undefined,
   );
-
 }
