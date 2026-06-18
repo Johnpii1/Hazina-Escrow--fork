@@ -17,6 +17,7 @@ import { formatUSDC, getTypeMeta, DATA_TYPE_META } from '../lib/utils';
 import clsx from 'clsx';
 import { getCatalog, useI18n } from '../i18n';
 import { useToastContext } from '../components/ui/ToastProvider';
+import { Toast, ToastProps } from '../components/ui/Toast';
 
 const PRICE_PRESETS = [0.01, 0.02, 0.05, 0.1, 0.25, 0.5];
 
@@ -70,6 +71,10 @@ function loadDraft(): {
       ...INITIAL,
       ...stored.data,
       sellerWallet: '', // Never restore sensitive wallet address
+      // Normalise price string to strip trailing zeros (e.g. '0.10' → '0.1')
+      pricePerQuery: stored.data.pricePerQuery
+        ? String(parseFloat(stored.data.pricePerQuery))
+        : INITIAL.pricePerQuery,
     };
 
     return { form: restoredForm, wasRestored: true };
@@ -110,17 +115,20 @@ export default function SellPage() {
   const catalog = getCatalog(locale);
   const navigate = useNavigate();
   const { success: toastSuccess, error: toastError } = useToastContext();
-  const [form, setForm] = useState<FormState>(loadDraft);
+  const [form, setForm] = useState<FormState>(() => loadDraft().form);
   const [tab, setTab] = useState<Tab>('form');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
   const [jsonError, setJsonError] = useState('');
+  const [priceTouched, setPriceTouched] = useState(false);
+  const [walletTouched, setWalletTouched] = useState(false);
   const [toast, setToast] = useState<ToastProps | null>(null);
 
   // Track if we've shown the draft restored toast
   const hasShownRestoreToastRef = useRef(false);
+  const confirmBtnRef = useRef<HTMLButtonElement>(null);
 
   // Show draft restored notification on first load
   useEffect(() => {
