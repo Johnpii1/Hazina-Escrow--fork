@@ -229,6 +229,7 @@ export async function processPayment(params: {
 
   const transactionId = existing?.id || `tx-${uuidv4()}`;
   const destinationAddress = process.env.ESCROW_WALLET || dataset.sellerWallet;
+  const tokenCode = dataset.paymentToken || 'USDC';
 
   transactionEventEmitter.updateTransactionStatus(transactionId, dataset.id, 'verifying', {
     amount: dataset.pricePerQuery.toString(),
@@ -239,6 +240,7 @@ export async function processPayment(params: {
     txHash,
     expectedAmount: dataset.pricePerQuery,
     destinationAddress,
+    tokenCode,
   });
 
   if (!verification.valid) {
@@ -377,7 +379,7 @@ export async function retryFailedSellerNotifications(): Promise<void> {
         // Exhausted retries — surface a durable alert so an operator can investigate
         console.error(
           `[Escrow] Seller notification permanently failed after ${MAX_SELLER_NOTIFICATION_ATTEMPTS} attempts ` +
-            `txHash=${tx.txHash} dataset=${tx.datasetId} seller=${tx.datasetId}`,
+          `txHash=${tx.txHash} dataset=${tx.datasetId} seller=${tx.datasetId}`,
         );
         Sentry.captureMessage(`Seller notification permanently failed: txHash=${tx.txHash}`, {
           level: 'error',
@@ -419,7 +421,7 @@ export async function retryFailedSellerNotifications(): Promise<void> {
         });
         console.error(
           `[Escrow] Seller notification retry ${attempts}/${MAX_SELLER_NOTIFICATION_ATTEMPTS} failed ` +
-            `txHash=${tx.txHash}: ${errMsg}`,
+          `txHash=${tx.txHash}: ${errMsg}`,
         );
       }
     }),

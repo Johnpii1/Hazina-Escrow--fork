@@ -174,12 +174,15 @@ paymentsRouter.post('/query/:id', async (req: Request, res: Response) => {
   const memo = `haz-${req.params.id.slice(0, 8)}-${timestamp}`;
 
   const transactionId = `tx-${uuidv4()}`;
+  const tokenCode = dataset.paymentToken || 'USDC';
+
   await addTransaction({
     id: transactionId,
     datasetId: dataset.id,
     txHash: '', // Not yet known
     memo,
     amount: dataset.pricePerQuery,
+    paymentToken: tokenCode,
     status: 'pending',
     deliveryStatus: 'pending',
     timestamp: new Date().toISOString(),
@@ -197,13 +200,13 @@ paymentsRouter.post('/query/:id', async (req: Request, res: Response) => {
     payment: {
       paymentAddress: process.env.ESCROW_WALLET || dataset.sellerWallet,
       amount: dataset.pricePerQuery,
-      currency: 'USDC',
+      currency: tokenCode,
       network: 'Stellar Testnet',
       memo,
       expiresIn: 300, // 5 minutes
       instructions: [
         `1. Open your Stellar wallet (Lobstr, StellarX, or testnet faucet)`,
-        `2. Send exactly ${dataset.pricePerQuery} USDC to the address above`,
+        `2. Send exactly ${dataset.pricePerQuery} ${tokenCode} to the address above`,
         `3. Include memo: ${memo}`,
         `4. Submit the transaction hash below to receive your data`,
       ],
