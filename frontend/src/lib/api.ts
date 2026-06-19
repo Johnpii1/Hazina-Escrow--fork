@@ -146,7 +146,6 @@ export interface AgentInfo {
   };
 }
 
-
 export interface DatasetMeta {
   id: string;
   name: string;
@@ -158,6 +157,8 @@ export interface DatasetMeta {
   totalEarned: number;
   createdAt: string;
   thumbnail?: string;
+  ratings?: { score: number; count: number };
+  priceHistory?: { price: number; changedAt: string }[];
 }
 
 export interface Transaction {
@@ -215,7 +216,20 @@ export const DatasetMetaSchema = z.object({
   totalEarned: z.number(),
   createdAt: z.string(),
   thumbnail: z.string().optional(),
+  ratings: z.object({ score: z.number(), count: z.number() }).optional(),
+  priceHistory: z.array(z.object({ price: z.number(), changedAt: z.string() })).optional(),
 });
+
+export const DatasetDetailSchema = DatasetMetaSchema.extend({
+  metadata: z.object({
+    type: z.string(),
+    schemaFields: z.array(z.string()),
+    sampleSize: z.number(),
+    lastUpdated: z.string(),
+  }),
+  preview: z.unknown(),
+});
+export type DatasetDetail = z.infer<typeof DatasetDetailSchema>;
 export type DatasetMeta = z.infer<typeof DatasetMetaSchema>;
 
 export const TransactionSchema = z.object({
@@ -263,7 +277,6 @@ export const QueryResultSchema = z.object({
   }),
 });
 export type QueryResult = z.infer<typeof QueryResultSchema>;
-
 
 interface RequestOptions extends RequestInit {
   /** Per-call override of the abort timeout, in milliseconds. */
@@ -392,8 +405,14 @@ export const api = {
 
   getDataset: (id: string) =>
     request<{ success: boolean; dataset: unknown }>(`${getApiBaseUrl()}/datasets/${id}`).then(r =>
-      parseApiResponse(DatasetMetaSchema, r.dataset),
+      parseApiResponse(DatasetDetailSchema, r.dataset),
     ),
+
+  submitDatasetRating: (id: string, score: number) =>
+    request<{ success: boolean; ratings: { score: number; count: number } }>(
+      `${getApiBaseUrl()}/datasets/${id}/ratings`,
+      { method: 'POST', body: JSON.stringify({ score }) },
+    ).then(r => r.ratings),
 
   getSellerAnalytics: (wallet: string) =>
     request<{ success: boolean } & SellerAnalytics>(
