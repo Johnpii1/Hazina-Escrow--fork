@@ -28,6 +28,7 @@ interface FormState {
   description: string;
   type: string;
   pricePerQuery: string;
+  paymentToken: 'USDC' | 'EURC' | 'XLM';
   sellerWallet: string;
   dataText: string;
 }
@@ -37,6 +38,7 @@ const INITIAL: FormState = {
   description: '',
   type: 'whale-wallets',
   pricePerQuery: '0.05',
+  paymentToken: 'USDC',
   sellerWallet: '',
   dataText: '',
 };
@@ -229,6 +231,7 @@ export default function SellPage() {
         description: form.description.trim(),
         type: form.type,
         pricePerQuery: parseFloat(form.pricePerQuery),
+        paymentToken: form.paymentToken,
         sellerWallet: form.sellerWallet.trim(),
         data: JSON.parse(form.dataText),
       });
@@ -348,8 +351,8 @@ export default function SellPage() {
                   />
                 </div>
 
-                {/* Type + Price row */}
-                <div className="grid grid-cols-2 gap-4">
+                {/* Type + Price + Token row */}
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="text-sm font-body font-medium text-foreground-muted mb-2 flex items-center gap-2">
                       <Zap className="w-4 h-4 text-gold" />
@@ -393,9 +396,23 @@ export default function SellPage() {
                       </p>
                     )}
                   </div>
-                </div>
 
-                {/* Price presets */}
+                  <div>
+                    <label className="text-sm font-body font-medium text-foreground-muted mb-2 flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-gold" />
+                      {t('sell.form.paymentToken')} <span className="text-red-400">*</span>
+                    </label>
+                    <select
+                      value={form.paymentToken}
+                      onChange={set('paymentToken') as any}
+                      className="w-full bg-void/60 border border-border/60 rounded-xl px-4 py-3 text-sm font-body text-foreground focus:outline-none focus:border-gold/50 transition-colors"
+                    >
+                      <option value="USDC">USDC</option>
+                      <option value="EURC">EURC</option>
+                      <option value="XLM">XLM</option>
+                    </select>
+                  </div>
+                </div>
                 <div>
                   <p className="text-xs text-muted-2 font-body mb-2">
                     {t('sell.form.quickPricePresets')}
@@ -553,7 +570,7 @@ export default function SellPage() {
                         You are about to list{' '}
                         <span className="text-foreground font-medium">{form.name}</span> at{' '}
                         <span className="text-gold font-semibold">
-                          ${formatUSDC(Number(form.pricePerQuery), locale)} USDC
+                          ${formatUSDC(Number(form.pricePerQuery), locale)} {form.paymentToken}
                         </span>{' '}
                         per query. This action cannot be undone.
                       </p>
@@ -591,7 +608,7 @@ export default function SellPage() {
                     <div className="text-right">
                       <p className="text-xs text-muted-2 mb-0.5">{t('common.units.perQuery')}</p>
                       <p className="font-display font-bold text-xl text-gold">
-                        ${formatUSDC(Number(form.pricePerQuery || '0'), locale)}
+                        ${formatUSDC(Number(form.pricePerQuery || '0'), locale)} {form.paymentToken}
                       </p>
                     </div>
                   </div>
@@ -613,6 +630,7 @@ export default function SellPage() {
                   <div className="w-full py-3 rounded-xl border border-border-gold/30 text-gold text-sm font-body font-semibold text-center">
                     {t('sell.preview.buyLabel', {
                       price: formatUSDC(Number(form.pricePerQuery || '0'), locale),
+                      token: form.paymentToken,
                     })}
                   </div>
                 </div>
